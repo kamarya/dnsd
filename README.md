@@ -5,7 +5,7 @@ DNSd is a daemon a.k.a. service for Unix-like systems. It provides a local DNS b
 > Google Public DNS offers DNSSEC-validating resolution over an encrypted HTTPS connection. DNS-over-HTTPS greatly enhances privacy and security between a client and a recursive resolver, and complements DNSSEC to provide end-to-end authenticated DNS lookups.
 > -- <cite>[Google Public DNS](https://developers.google.com/speed/public-dns/docs/dns-over-https)</cite>
 
-## Highlights
+### Highlights
  - Ultra lightweight (disk and memory footage).
  - Full functionality behind the web proxy out of the box.
  - Minimalistic implementation approach.
