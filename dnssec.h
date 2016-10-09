@@ -60,17 +60,19 @@
 #define OPT_SERVER_IP           "server_ip_list"
 #define OPT_SERVER_IP_LEN       512
 #define OPT_DEFAULT_URL         "https://dns.google.com"
+#define OPT_SERVICE_PORT        "service_port"
 
 
 #define UNUSED(x) (void)(x)
 
 struct func_options
 {
-    char    config_file[OPT_CONIG_FILE_LEN];
-    char    https_proxy[OPT_HTTPS_PROXY_LEN];
-    char    server_url[OPT_SERVER_URL_LEN];
-    char    server_ip_list[OPT_SERVER_IP_LEN];
-    uint8_t enable_debug;
+    char      config_file[OPT_CONIG_FILE_LEN];
+    char      https_proxy[OPT_HTTPS_PROXY_LEN];
+    char      server_url[OPT_SERVER_URL_LEN];
+    char      server_ip_list[OPT_SERVER_IP_LEN];
+    uint16_t  service_port;
+    uint8_t   enable_debug;
 };
 
 struct dns_header

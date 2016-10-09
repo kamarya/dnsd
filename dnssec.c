@@ -232,7 +232,7 @@ void server(void)
     memset(data,   0x00, MAX_DOMAIN_LENGTH);
 
     server_add.sin_family = AF_INET;
-    server_add.sin_port = htons(DNS_SERVER_PORT);
+    server_add.sin_port = htons(options.service_port);
     server_add.sin_addr.s_addr = htonl(INADDR_ANY);
 
 
@@ -372,6 +372,8 @@ int main(int argc, char **argv)
         LOG_ERROR("parsing the configuration file has been failed.");
     }
 
+    if (options.service_port == 0) options.service_port = DNS_SERVER_PORT;
+
     peer_add_len = sizeof(struct sockaddr_storage);
     running = 1;
 
@@ -380,9 +382,10 @@ int main(int argc, char **argv)
     memset (&sa, '\0', sizeof(sa));
     sa.sa_handler = &handle_signal;
 
-    sigaction(SIGHUP,  &sa, NULL);
-    sigaction(SIGUSR1, &sa, NULL);
-    sigaction(SIGINT,  &sa, NULL);
+    sigaction(SIGHUP,   &sa, NULL);
+    sigaction(SIGUSR1,  &sa, NULL);
+    sigaction(SIGINT,   &sa, NULL);
+    sigaction(SIGTERM,  &sa, NULL);
 
 #if !DEBUG_ENABLE
     start_daemon();
@@ -390,7 +393,8 @@ int main(int argc, char **argv)
 #endif
 
     server();
-    return 0;
+
+    return EXIT_SUCCESS;
 }
 
 
@@ -731,6 +735,10 @@ int parse_options()
         {
             if (line[read - 1] == '/') line[read - 1] = '\0';
             strncpy(options.server_url, line + sizeof(OPT_SERVER_URL), OPT_SERVER_URL_LEN);
+        }
+        else if (strstr(line, OPT_SERVICE_PORT) != NULL)
+        {
+          options.service_port = atoi(line + sizeof(OPT_SERVICE_PORT));
         }
     }
 

@@ -23,7 +23,9 @@ You may run the service in the background (as a daemon) by setting the config fi
 ```
 dnsd -f /etc/dnsd.conf
 ```
+After the daemon is successfully loaded, the local DNS service is available on the regular DNS port 53.
 If you are behind a web proxy server, you need to set its address and port in the configuration file.
+
 
 # License
 
