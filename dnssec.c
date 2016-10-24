@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <stdlib.h>
@@ -346,13 +346,14 @@ int main(int argc, char **argv)
     static struct option long_options[] =
     {
         {"debug",      no_argument,             0, 'D'},
+        {"help",       no_argument,             0, 'h'},
         {"config",     required_argument,       0, 'f'},
         {0, 0, 0, 0}
     };
 
     int option_index = 0;
 
-    while ((c = getopt_long(argc, argv, "Df:", long_options, &option_index)) != -1)
+    while ((c = getopt_long(argc, argv, "hDf:", long_options, &option_index)) != -1)
     {
         switch (c) {
             case 'f':
@@ -361,6 +362,9 @@ int main(int argc, char **argv)
             case 'D':
                 options.enable_debug = 0xFF;
                 break;
+            case 'h':
+                usage(argv[0]);
+                return EXIT_FAILURE;
             default:
                 usage(argv[0]);
                 return EXIT_FAILURE;
@@ -698,7 +702,9 @@ void handle_signal(int signal)
 
 void usage(char* exec_name)
 {
-    fprintf(stderr, "Usage : %s [-D] [-f FILE]\n", exec_name);
+    fprintf(stderr, "\n"LICENSE"\n\n");
+    fprintf(stderr, "Usage : %s [-D] [-f CONFIG_FILE]\n", exec_name);
+    fprintf(stderr, "        %s [-h|--help] Display this information.\n", exec_name);
 }
 
 int parse_options()

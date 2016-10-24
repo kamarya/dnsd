@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
 #ifndef _DNSSL_H_
@@ -20,6 +20,10 @@
 
 #define PIDFILE             "/var/run/dnssecd.pid"
 
+#define LICENSE             "DNSd  Copyright (C) 2016  Behrooz Aliabadi.\n"\
+                            "This program comes with ABSOLUTELY NO WARRANTY. \n"\
+                            "You should have received a copy of the GNU General Public License\n"\
+                            "along with this program. If not, see <http://www.gnu.org/licenses/>."
 // Resource Record (RR)
 
 #define DNS_QR_RESPONSE     0x8000
