@@ -1,0 +1,10 @@
+[Unit]
+Description=DNSd Daemon
+After=network.target
+
+[Service]
+ExecStartPre=/usr/sbin/dnsd -f /etc/dnsd.conf
+ExecStart=/usr/sbin/dnsd -f /etc/dnsd.conf
+
+[Install]
+WantedBy=multi-user.target
