@@ -1,0 +1,86 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          dnsd
+# Required-Start:    $local_fs $remote_fs $network $syslog
+# Required-Stop:     $local_fs $remote_fs $network $syslog
+# Should-Start:      fam
+# Should-Stop:       fam
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start DNSd, a DNS-over-HTTPS server.
+# Description:       Fast and small DNS server that delegates
+#                    DNSSEC to a remote server over HTTPS.
+#                    Such a service is currently supported by
+#                    Google which is used by DNSd.
+#                    The user must read and agree to the EULA(s)
+#                    before using this module. The user will be
+#                    the sole responsible for using this module
+#                    and Google DNS-over-HTTPS service(s).
+#
+### END INIT INFO
+
+set -e
+
+# Source function library.
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/dnsd
+NAME=dnsd
+DESC="DNSd Daemon"
+PIDFILE=/var/run/$NAME.pid
+SCRIPTNAME=/etc/init.d/$NAME
+
+DAEMON_OPTS="-f /etc/dnsd.conf"
+
+test -x $DAEMON || exit 0
+
+. /lib/lsb/init-functions
+
+
+start() {
+        log_daemon_msg "Start : " $NAME
+
+        if ! start-stop-daemon --start --oknodo --quiet \
+            --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+        then
+            log_end_msg 1
+        else
+            log_end_msg 0
+        fi
+        return
+}
+
+stop() {
+        log_daemon_msg "Stop : " $NAME
+
+        if start-stop-daemon --stop --retry 30 --oknodo --quiet \
+            --pidfile $PIDFILE --exec $DAEMON
+        then
+            rm -f $PIDFILE
+            log_end_msg 0
+        else
+            log_end_msg 1
+        fi
+        return
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status_of_proc -p "$PIDFILE" "$DAEMON" dnsd && exit 0 || exit $?
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: $SCRIPTNAME {start|stop|status|restart}" >&2
+        exit 1
+        ;;
+esac
+exit $?
