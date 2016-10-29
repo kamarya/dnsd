@@ -18,7 +18,7 @@
 #ifndef _DNSSL_H_
 #define _DNSSL_H_
 
-#define PIDFILE             "/var/run/dnssecd.pid"
+#define PIDFILE             "/var/run/dnsd.pid"
 
 #define LICENSE             "DNSd  Copyright (C) 2016  Behrooz Aliabadi.\n"\
                             "This program comes with ABSOLUTELY NO WARRANTY. \n"\

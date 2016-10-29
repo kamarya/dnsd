@@ -3,8 +3,11 @@ Description=DNSd Daemon
 After=network.target
 
 [Service]
-ExecStartPre=/usr/sbin/dnsd -f /etc/dnsd.conf
+Type=forking
+PIDFile=/var/run/dnsd.pid
 ExecStart=/usr/sbin/dnsd -f /etc/dnsd.conf
+KillMode=process
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
