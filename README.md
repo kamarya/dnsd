@@ -26,7 +26,12 @@ dnsd -f /etc/dnsd.conf
 After the daemon is successfully loaded, the local DNS service is available on the regular DNS port 53.
 If you are behind a web proxy server, you need to set its address and port in the configuration file.
 
-
+If you would like to add DNSd as a service on your Linux machine, install the launcher (init and systemd) configuration files.
+```
+make linux-service
+systemctl daemon-reload
+service dnsd start
+```
 # License
 
 This software is licensed under the GNU GPLv3 license.
