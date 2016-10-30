@@ -140,23 +140,25 @@ struct dns_answer
 /*      functions         */
 
 
-int   json_to_answer(char* answer, struct dns_header_detail* header);
+int   json_to_answer(char*, struct dns_header_detail*);
 
-void  format(char* name, size_t length);
+void  format(char*, size_t);
 
-void  copy(char* const dst,const char* src, size_t length);
+void  copy(char* const, const char*, size_t);
 
-char* getTypeString(uint16_t type, int unknown);
+char* getTypeString(uint16_t, int);
 
-void  hexdump (char *desc, void *addr, int len);
+void  handle_signal(int);
 
-void  handle_signal(int signal);
-
-void  usage(char* exec_name);
+void  usage(char*);
 
 int   parse_options();
 
 int   create_pidfile();
+
+void  remove_spaces(char*);
+
+void  hexdump (char*, void*, int);
 
 #endif /* DNSSL_H */
 
