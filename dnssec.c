@@ -45,7 +45,7 @@
 
 #define DEBUG_ENABLE                    0
 #define DEBUG_AUDIT_ENABLE              0
-#define BUFFER_SIZE                     65535
+#define BUFFER_SIZE                     102400
 #define DNS_SERVER_PORT                 53
 
 sig_atomic_t                        running = 0;
@@ -231,23 +231,27 @@ void server(void)
     memset(json,   0x00, BUFFER_SIZE);
     memset(data,   0x00, MAX_DOMAIN_LENGTH);
 
-    server_add.sin_family = AF_INET;
-    server_add.sin_port = htons(options.service_port);
+    server_add.sin_family      = AF_INET;
+    server_add.sin_port        = htons(options.service_port);
     server_add.sin_addr.s_addr = htonl(INADDR_ANY);
 
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if ( sock < 0 ) {
+    if ( sock < 0 )
+    {
         perror("socket()");
         return;
     }
-    if ( bind(sock,(struct sockaddr*)&server_add,sizeof(server_add)) ) {
+
+    if (bind(sock, (struct sockaddr*) &server_add, sizeof(server_add)))
+    {
         perror("bind()");
         return;
     }
 
 
-    while (running) {
+    while (running)
+    {
         int nread = recvfrom(sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&peer_add, &peer_add_len);
 
         if (nread < 0) continue;
@@ -355,7 +359,8 @@ int main(int argc, char **argv)
 
     while ((c = getopt_long(argc, argv, "hDf:", long_options, &option_index)) != -1)
     {
-        switch (c) {
+        switch (c)
+        {
             case 'f':
                 strncpy(options.config_file, optarg, OPT_CONIG_FILE_LEN);
                 break;
@@ -430,6 +435,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         char*   beg  = strchr(token,   ':') + 2;
         size_t  len  = strchr(beg,   ',') - beg;
 
+        memset(ctype, 0x00, 10);
         strncpy(ctype, beg, len);
         type         = atoi(ctype);
 
@@ -452,6 +458,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         beg         = strchr(beg,   ':') + 2;
         len         = strchr(beg,   ',') - beg;
 
+        memset(cttl, 0x00, 10);
         strncpy(cttl, beg, len);
         ttl         = atoi(cttl);
         token       = beg + len;
@@ -480,7 +487,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         if (type == DNS_A_RECORD)
         {
             ans->r_data_len  =  htons(4);
-            rdata       =  (char *)(answer + 12);
+            rdata            =  (char *)(answer + 12);
             inet_pton(AF_INET, data + offset, rdata);
 
             // 4 x 3 + 3 = 15 bytes to be erased
@@ -519,7 +526,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
 
             data[len] = 0x00;
             ans->r_data_len  =  htons(len + offset);
-            rdata       =  (char *)(answer + 12);
+            rdata            =  (char *)(answer + 12);
 
             memcpy(rdata, data, len + offset);
 
@@ -530,7 +537,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         else if (type == DNS_MX_RECORD)
         {
 
-            rdata       =  (char *)(answer + 12);
+            rdata             =  (char *)(answer + 12);
 
             size_t      dot   = 0;
             while (data[dot] != ' ' && dot < 3) dot++;
