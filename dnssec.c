@@ -727,6 +727,8 @@ int parse_options()
             --read;
         }
 
+        remove_spaces(line);
+
         // skip too short lines
         if (read < 3) continue;
 
@@ -769,4 +771,16 @@ int create_pidfile()
     write(pidfp, str, strlen(str));
 
     return EXIT_SUCCESS;
+}
+
+void remove_spaces(char* str)
+{
+    char* stra = str;
+    char* strb = str;
+
+    do
+    {
+      *stra = *strb;
+      if(*stra != ' ') stra++;
+    } while(*strb++ != 0);
 }

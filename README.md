@@ -11,7 +11,7 @@ DNSd is a daemon a.k.a. service for Unix-like systems. It provides a local DNS b
  - Minimalistic implementation approach.
  - Highly configurable through a simple config. file.
  - A Self contained package that depends only on [libcurl](https://curl.haxx.se/libcurl/).
- - Suppoted records are **A**,**AAAA**,**CNAME**,**NS** and **MX**.
+ - Supported records are **A**,**AAAA**,**CNAME**,**NS** and **MX**.
 
 # Build and Install
 Build the software by running the following commands in the terminal.
@@ -31,6 +31,36 @@ If you would like to add DNSd as a service on your Linux machine, install the la
 make linux-service
 systemctl daemon-reload
 service dnsd start
+```
+### Verification
+You can verify wether the service is accessible through ```host -va github.com localhost```.
+```
+Trying "github.com"
+Using domain server:
+Name: localhost
+Address: 127.0.0.1#53
+Aliases:
+
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 61907
+;; flags: qr rd; QUERY: 1, ANSWER: 11, AUTHORITY: 0, ADDITIONAL: 0
+
+;; QUESTION SECTION:
+;github.com.			IN	ANY
+
+;; ANSWER SECTION:
+github.com.		299	IN	A	192.30.253.112
+github.com.		299	IN	A	192.30.253.113
+github.com.		899	IN	NS	ns-1283.awsdns-32.org.
+github.com.		899	IN	NS	ns-1707.awsdns-21.co.uk.
+github.com.		899	IN	NS	ns-421.awsdns-52.com.
+github.com.		899	IN	NS	ns-520.awsdns-01.net.
+github.com.		3599	IN	MX	1 aspmx.l.google.com.
+github.com.		3599	IN	MX	10 alt3.aspmx.l.google.com.
+github.com.		3599	IN	MX	10 alt4.aspmx.l.google.com.
+github.com.		3599	IN	MX	5 alt1.aspmx.l.google.com.
+github.com.		3599	IN	MX	5 alt2.aspmx.l.google.com.
+
+Received 390 bytes from 127.0.0.1#53 in 178 ms
 ```
 # License
 
