@@ -387,9 +387,19 @@ int main(int argc, char **argv)
     running = 1;
 
     // signal handler initialization
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    sigaddset(&sigset, SIGCHLD);
+    sigaddset(&sigset, SIGTSTP);
+    sigaddset(&sigset, SIGTTOU);
+    sigaddset(&sigset, SIGTTIN);
+    sigprocmask(SIG_BLOCK, &sigset, NULL);
+
     struct sigaction sa;
     memset (&sa, '\0', sizeof(sa));
-    sa.sa_handler = &handle_signal;
+    sa.sa_handler = handle_signal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
 
     sigaction(SIGHUP,   &sa, NULL);
     sigaction(SIGUSR1,  &sa, NULL);
