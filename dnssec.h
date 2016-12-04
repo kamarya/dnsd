@@ -67,6 +67,13 @@
 #define OPT_SERVICE_PORT        "service_port"
 
 
+
+#define LOG_LEVEL               LEV_NO_DEV_LOG
+#define DEBUG_ENABLE            0
+#define DEBUG_AUDIT_ENABLE      0
+#define BUFFER_SIZE             102400
+#define DNS_SERVER_PORT         53
+
 #define UNUSED(x) (void)(x)
 
 struct func_options
