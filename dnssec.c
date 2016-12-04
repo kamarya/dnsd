@@ -22,31 +22,17 @@
 #include <getopt.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-/* Network and Socket */
 #include <curl/curl.h>
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-
 #include <unistd.h>
-
-/* Logging */
-#define LOG_LEVEL                       LEV_NO_DEV_LOG
+#include <sys/stat.h>   // umask()
+#include "dnssec.h"
 #include "log.h"
 
-
-#include <sys/stat.h>   // umask()
-
-#include "dnssec.h"
-
-
-#define DEBUG_ENABLE                    0
-#define DEBUG_AUDIT_ENABLE              0
-#define BUFFER_SIZE                     102400
-#define DNS_SERVER_PORT                 53
 
 sig_atomic_t                        running = 0;
 static int                          sock;
@@ -66,7 +52,7 @@ static void __attribute__ ((unused)) start_daemon()
     process_id = fork();
     if (process_id < 0)
     {
-        printf("fork failed!\n");
+        fprintf(stderr, "fork failed.\n");
         exit(EXIT_FAILURE);
     }
 
@@ -275,7 +261,7 @@ void server(void)
         if (res == 0)
             LOG_DEBUG("received %ld bytes from [%s] [%s:%s]", (long) nread, host, ip, service);
         else
-            LOG_ERROR( "getnameinfo() : %s", gai_strerror(res));
+            LOG_ERROR("getnameinfo() : %s", gai_strerror(res));
 #if DEBUG_AUDIT_ENABLE
         audit_pid(service);
 #endif
@@ -321,7 +307,7 @@ void server(void)
         }
         else
         {
-            LOG_DEBUG ("(%x) %u bytes has been sent to %s:%s.", header->id, (unsigned int)(nread + answer_length), ip, service);
+            LOG_DEBUG("(%x) %u bytes has been sent to %s:%s.", header->id, (unsigned int)(nread + answer_length), ip, service);
         }
 
         memset(buffer, 0x00, BUFFER_SIZE);
@@ -459,7 +445,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         }
         else
         {
-            token       =  beg + len;
+            token   =  beg + len;
         }
 
         LOG_DEBUG ("(%x) Type : %d (%s)", header->id, type, getTypeString(type, TRUE));
@@ -574,10 +560,10 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         else
         {
             ans->r_data_len  =  htons(len + offset);
-            rdata       =  (char *)(answer + 12);
+            rdata            =  (char *)(answer + 12);
             strncpy(rdata, data + offset, len + offset);
             memset(data,   0x00, len + offset);
-            answer += len + 12 + offset;
+            answer          += len + 12 + offset;
         }
 
         num_answers++;
@@ -705,7 +691,8 @@ void copy(char* const dst,const char* src, size_t length)
 
 void handle_signal(int signal)
 {
-    switch (signal) {
+    switch (signal)
+    {
         case SIGHUP:
         case SIGTERM:
         case SIGUSR1:
@@ -777,9 +764,9 @@ int create_pidfile()
 {
     char str[10] = {0};
 
-    pidfp = open(PIDFILE, O_RDWR|O_CREAT, 0600);
+    pidfp        = open(PIDFILE, O_RDWR|O_CREAT, 0600);
 
-    if (pidfp == -1 ) return EXIT_FAILURE;
+    if (pidfp == -1) return EXIT_FAILURE;
 
     if (lockf(pidfp, F_TLOCK,0) == -1) return EXIT_FAILURE;
 
