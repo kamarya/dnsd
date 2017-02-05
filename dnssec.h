@@ -163,7 +163,7 @@ int   parse_options();
 
 int   create_pidfile();
 
-void  remove_spaces(char*);
+int   remove_spaces(char*);
 
 void  hexdump (char*, void*, int);
 

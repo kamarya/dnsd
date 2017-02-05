@@ -274,6 +274,7 @@ void server(void)
             if (names[i] < 0x30 && names[i] != '\0') names[i] = '.';
         }
 
+        LOG_DEBUG("number of questions (%u)", ntohs(header->q_count));
 
         struct dns_query  query;
         query.header = header;
@@ -284,16 +285,23 @@ void server(void)
 
         memset(json,   0x00, BUFFER_SIZE);
 
-        https_query(&query);
-
         header->qr        =   1; // this is a response
         header->rcode     =   0;
         header->ans_count =   htons(0);
 
-        char* answer = (char *)(buffer + nread);
-
         int answer_length = 0;
-        if ((answer_length = json_to_answer(answer, header)) < 1)
+
+        // TODO support multiple questions; however it seems others don't.
+        if (ntohs(header->q_count) == 1)
+        {
+            https_query(&query);
+
+            char* answer = (char *)(buffer + nread);
+
+            answer_length = json_to_answer(answer, header);
+        }
+
+        if (answer_length < 1)
         {
             header->rcode = DNS_SERVER_FAILURE;
             answer_length = 0; // the returned value may be less than zero to indicate the error code.
@@ -716,7 +724,7 @@ int parse_options()
     FILE    *fp     = NULL;
     char    *line   = NULL;
     size_t  len     = 0;
-    ssize_t read;
+    ssize_t read    = 0;
 
     fp = fopen(options.config_file, "r");
     if (fp == NULL) return EXIT_FAILURE;
@@ -724,14 +732,14 @@ int parse_options()
     while ((read = getline(&line, &len, fp)) != -1)
     {
 
-        // remove the trailing newline characters
-        if (line[read - 1] == '\n')
+        // replace the trailing newline characters with the space character
+        for (size_t indx = 0; indx < read; indx++)
         {
-            line[read - 1] = '\0';
-            --read;
+            if (line[indx] == '\n' || line[indx] == '\r') line[indx] = 0x20;
         }
 
-        remove_spaces(line);
+        int shift = remove_spaces(line);
+        read -= shift;
 
         // skip too short lines
         if (read < 3) continue;
@@ -777,14 +785,20 @@ int create_pidfile()
     return EXIT_SUCCESS;
 }
 
-void remove_spaces(char* str)
+int remove_spaces(char* str)
 {
+    if (str == NULL) return 0;
+
     char* stra = str;
     char* strb = str;
+    int shift = 0;
 
     do
     {
       *stra = *strb;
       if(*stra != ' ') stra++;
+      else shift++;
     } while(*strb++ != 0);
+
+    return shift;
 }
