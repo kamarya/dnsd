@@ -23,8 +23,7 @@ set -e
 
 # Source function library.
 
-PATH=/sbin:/bin:/usr/sbin:/usr/bin
-DAEMON=/usr/sbin/dnsd
+DAEMON=/usr/local/bin/dnsd
 NAME=dnsd
 DESC="DNSd Daemon"
 PIDFILE=/var/run/$NAME.pid

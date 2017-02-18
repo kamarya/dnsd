@@ -32,6 +32,11 @@ make linux-service
 systemctl daemon-reload
 service dnsd start
 ```
+For macOS systems install and launch the service as follows.
+```
+make macos-service
+launchctl load /Library/LaunchDaemons/service.dnsd.plist
+```
 ### Verification
 You can verify wether the service is accessible through ```host -va github.com localhost```.
 ```
