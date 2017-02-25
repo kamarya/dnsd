@@ -29,9 +29,10 @@ If you are behind a web proxy server, you need to set its address and port in th
 If you would like to add DNSd as a service on your Linux machine, install the launcher (init and systemd) configuration files.
 ```
 make linux-service
-systemctl daemon-reload
 service dnsd start
 ```
+For *systemd* you may need to run ```systemctl daemon-reload``` before starting the service.
+
 For macOS systems install and launch the service as follows.
 ```
 make macos-service
