@@ -29,6 +29,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <poll.h>
 #include <sys/stat.h>   // umask()
 #include "dnssec.h"
 #include "log.h"
@@ -84,9 +85,9 @@ static void __attribute__ ((unused)) start_daemon()
 #if DEBUG_AUDIT_ENABLE
 void audit_pid(const char* port)
 {
-    int failed = 1;
-    FILE *fp;
-    char buffer[2048];
+    int   failed = 1;
+    FILE* fp;
+    char  buffer[2048];
 
     fp = popen("netstat -npau 2>&1", "r");
     if (fp == NULL)
@@ -113,13 +114,22 @@ void audit_pid(const char* port)
         }
     }
 
-    if(failed) LOG_DEBUG("PID audit failed.");
+    if (failed) LOG_DEBUG("PID audit failed.");
 
     pclose(fp);
 }
 #endif
 
-size_t body_callback (void *contents, size_t size, size_t nmemb, void *userp)
+int ipoll()
+{
+    struct pollfd fds;
+    fds.fd      = sock;
+    fds.events  = POLLIN;
+
+    return poll(&fds, 1, 1000);
+}
+
+size_t body_callback (void* contents, size_t size, size_t nmemb, void* userp)
 {
     size_t chunk = size * nmemb;
     strncpy(json + total_read, contents, chunk);
@@ -128,14 +138,13 @@ size_t body_callback (void *contents, size_t size, size_t nmemb, void *userp)
     LOG_DEBUG("read totaly %zu bytes.", total_read);
 
     return chunk;
-
 }
 
-void https_query(struct dns_query* query)
+void https_query (struct dns_query* query)
 {
 
-    CURL *curl;
-    CURLcode res;
+    CURL*     curl;
+    CURLcode  res;
 
     char query_str[3 * (MAX_DOMAIN_LENGTH + MAX_SUBDOMAIN_LENGTH)] = {0};
 
@@ -155,7 +164,7 @@ void https_query(struct dns_query* query)
 
     LOG_DEBUG("query : %s", query_str);
 
-    struct curl_slist *headers = NULL;
+    struct curl_slist* headers = NULL;
 
     headers = curl_slist_append(headers, "Accept-Encoding : deflate, sdch, br");
     headers = curl_slist_append(headers, "Accept : txt/html, application/xml;q=0.8");
@@ -192,14 +201,14 @@ void https_query(struct dns_query* query)
         }
 
         curl_easy_cleanup(curl);
-
+        curl_slist_free_all(headers);
         LOG_DEBUG("curl_easy_perform() has returned.");
     }
 
     curl_global_cleanup();
 }
 
-void server(void)
+int server()
 {
 
     struct sockaddr_in        server_add;
@@ -208,10 +217,8 @@ void server(void)
     data          = malloc(MAX_DOMAIN_LENGTH);
     char*  names  = malloc(MAX_DOMAIN_LENGTH);
 
-    if (buffer == NULL) return;
-    if (json   == NULL) return;
-    if (data   == NULL) return;
-    if (names  == NULL) return;
+    if (buffer == NULL || json == NULL ||
+        data == NULL || names == NULL) return EXIT_FAILURE;
 
     memset(buffer, 0x00, BUFFER_SIZE);
     memset(json,   0x00, BUFFER_SIZE);
@@ -223,21 +230,34 @@ void server(void)
 
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if ( sock < 0 )
+    if (sock < 0)
     {
         perror("socket()");
-        return;
+        return EXIT_FAILURE;
     }
 
     if (bind(sock, (struct sockaddr*) &server_add, sizeof(server_add)))
     {
         perror("bind()");
-        return;
+        return EXIT_FAILURE;
     }
 
 
     while (running)
     {
+        int rp    = ipoll();
+
+        if (rp == 0) continue;
+        else if (rp < 0)
+        {
+            if (running)
+            {
+                LOG_ERROR("socket poll failed.");
+                running = 0;
+            }
+            break;
+        }
+
         int nread = recvfrom(sock, buffer, BUFFER_SIZE, MSG_WAITALL, (struct sockaddr*)&peer_add, &peer_add_len);
 
         if (nread < 0) continue;
@@ -247,6 +267,7 @@ void server(void)
         int res = getnameinfo((struct sockaddr *) &peer_add,
                 peer_add_len, host, NI_MAXHOST,
                 service, NI_MAXSERV, NI_NUMERICSERV);
+
         if (peer_add.ss_family == AF_INET)
         {
             struct sockaddr_in *p = (struct sockaddr_in *) &peer_add;
@@ -328,7 +349,7 @@ void server(void)
     free(json);
     close(sock);
 
-    LOG_DEBUG ("Process Terminated.");
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, char **argv)
@@ -336,7 +357,7 @@ int main(int argc, char **argv)
 
     memset(&options, 0x00, sizeof(struct func_options));
 
-    extern char *optarg;
+    extern char* optarg;
     extern int   optind;
     int          c;
 
@@ -377,8 +398,8 @@ int main(int argc, char **argv)
 
     if (options.service_port == 0) options.service_port = DNS_SERVER_PORT;
 
-    peer_add_len = sizeof(struct sockaddr_storage);
-    running = 1;
+    peer_add_len  = sizeof(struct sockaddr_storage);
+    running       = 1;
 
     // signal handler initialization
     sigset_t sigset;
@@ -399,13 +420,17 @@ int main(int argc, char **argv)
     sigaction(SIGUSR1,  &sa, NULL);
     sigaction(SIGINT,   &sa, NULL);
     sigaction(SIGTERM,  &sa, NULL);
+    signal(SIGPIPE, SIG_IGN);
 
 #if !DEBUG_ENABLE
     start_daemon();
     if (create_pidfile() == EXIT_FAILURE) return EXIT_FAILURE;
 #endif
 
-    server();
+    if (server() == EXIT_FAILURE)
+        LOG_ERROR ("udp server failed to start.");
+
+    LOG_DEBUG ("Process Terminated.");
 
     return EXIT_SUCCESS;
 }
