@@ -568,27 +568,25 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
 
             rdata             =  (char *)(answer + 12);
 
-            size_t      dot   = 0;
-            while (data[dot] != ' ' && dot < 3) dot++;
-            data[dot]         = '\0';
+            size_t      pref_len   = 0;
+            while (data[pref_len] != ' ' && pref_len < MX_PREF_MAX_LEN) pref_len++;
+            data[pref_len]         = '\0';
             uint16_t    pref  = atoi(data + offset);
 
-            LOG_DEBUG("(%x) MX Preference : %d", header->id, pref);
-            LOG_DEBUG("(%x) len [%zu] data [%s]", header->id, len, &data[dot + 1]);
+            LOG_DEBUG("(%x) MX Preference : %d - %zd", header->id, pref, pref_len);
+            LOG_DEBUG("(%x) len [%zu] data [%s]", header->id, len, &data[pref_len + 1]);
 
-            int diff = (dot == 2)?0:1;
-
-            ans->r_data_len  =  htons(len + diff);
+            ans->r_data_len  =  htons(len - pref_len + 2);
 
             pref = htons(pref);
             memcpy(rdata, (void *)(&pref), sizeof(pref));
 
-            format(data + dot, len - dot);
+            format(data + pref_len, len - pref_len);
 
-            copy(rdata + sizeof(pref), data + dot, len + dot);
+            copy(rdata + sizeof(pref), data + pref_len, len + pref_len);
 
             memset(data,   0x00, MAX_DOMAIN_LENGTH);
-            answer += len + 12 + diff;
+            answer += len + 12 - pref_len + 2;
         }
         else
         {
