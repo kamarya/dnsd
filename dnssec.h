@@ -66,7 +66,7 @@
 #define OPT_DEFAULT_URL         "https://dns.google.com"
 #define OPT_SERVICE_PORT        "service_port"
 
-
+#define MX_PREF_MAX_LEN         5
 
 #define LOG_LEVEL               LEV_NO_DEV_LOG
 #define DEBUG_ENABLE            0
