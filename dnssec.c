@@ -516,24 +516,24 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         if (type == DNS_A_RECORD)
         {
             ans->r_data_len  =  htons(4);
-            rdata            =  (char *)(answer + 12);
+            rdata            =  (char *)(answer + DNS_ANSWER_LEN);
             inet_pton(AF_INET, data + offset, rdata);
 
             // 4 x 3 + 3 = 15 bytes to be erased
-            memset(data,   0x00, 20);
+            memset(data,   0x00, INET_ADDRSTRLEN);
 
-            answer += 4 + 12;
+            answer += 4 + DNS_ANSWER_LEN;
         }
         else if (type == DNS_AAA_RECORD)
         {
-            ans->r_data_len  =  htons(16);
-            rdata       =  (char *)(answer + 12);
+            ans->r_data_len  =  htons(INET_ADDRSTRLEN);
+            rdata       =  (char *)(answer + DNS_ANSWER_LEN);
             inet_pton(AF_INET6, data + offset, rdata);
 
             // maximum string size of an IPv6 address is 45 bytes
-            memset(data,   0x00, 50);
+            memset(data,   0x00, INET6_ADDRSTRLEN);
 
-            answer += 16 + 12;
+            answer += INET_ADDRSTRLEN + DNS_ANSWER_LEN;
         }
         else if (type == DNS_CNAME_RECORD ||
                 type == DNS_NS_RECORD)
@@ -555,28 +555,28 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
 
             data[len] = 0x00;
             ans->r_data_len  =  htons(len + offset);
-            rdata            =  (char *)(answer + 12);
+            rdata            =  (char *)(answer + DNS_ANSWER_LEN);
 
             memcpy(rdata, data, len + offset);
 
             memset(data,   0x00, len + offset);
-            answer += len + offset + 12;
+            answer += len + offset + DNS_ANSWER_LEN;
 
         }
         else if (type == DNS_MX_RECORD)
         {
 
-            rdata             =  (char *)(answer + 12);
+            rdata             =  (char *)(answer + DNS_ANSWER_LEN);
 
             size_t      pref_len   = 0;
             while (data[pref_len] != ' ' && pref_len < MX_PREF_MAX_LEN) pref_len++;
             data[pref_len]         = '\0';
-            uint16_t    pref  = atoi(data + offset);
+            uint16_t    pref       = atoi(data + offset);
 
-            LOG_DEBUG("(%x) MX Preference : %d - %zd", header->id, pref, pref_len);
+            LOG_DEBUG("(%x) MX Preference : %d", header->id, pref);
             LOG_DEBUG("(%x) len [%zu] data [%s]", header->id, len, &data[pref_len + 1]);
 
-            ans->r_data_len  =  htons(len - pref_len + 2);
+            ans->r_data_len  =  htons(len - pref_len + sizeof(pref));
 
             pref = htons(pref);
             memcpy(rdata, (void *)(&pref), sizeof(pref));
@@ -586,15 +586,15 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
             copy(rdata + sizeof(pref), data + pref_len, len + pref_len);
 
             memset(data,   0x00, MAX_DOMAIN_LENGTH);
-            answer += len + 12 - pref_len + 2;
+            answer += len + DNS_ANSWER_LEN - pref_len + sizeof(pref);
         }
         else
         {
             ans->r_data_len  =  htons(len + offset);
-            rdata            =  (char *)(answer + 12);
+            rdata            =  (char *)(answer + DNS_ANSWER_LEN);
             strncpy(rdata, data + offset, len + offset);
             memset(data,   0x00, len + offset);
-            answer          += len + 12 + offset;
+            answer          += len + DNS_ANSWER_LEN + offset;
         }
 
         num_answers++;
