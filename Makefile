@@ -10,3 +10,5 @@ linux-service:
 	chmod 755 /etc/init.d/dnsd
 macos-service:
 	cp service/service.dnsd.plist /Library/LaunchDaemons
+clean:
+	rm -f dnsd

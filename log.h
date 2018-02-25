@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Behrooz Aliabadi
+ * Copyright (C) 2016  Behrooz Kamary Aliabadi
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,12 +21,12 @@
 #include <time.h>
 #include <string.h>
 
-static inline char *get_timestamp();
+static inline char* get_timestamp();
 
 #define _FILE strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__
 
 #define LEV_NO_DEV_LOG  0x00
-#define LEV_EMRRGENCY   0x01
+#define LEV_EMERGENCY   0x01
 #define LEV_ALERT       0x02
 #define LEV_CRITICAL    0x03
 #define LEV_ERROR       0x04
