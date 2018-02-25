@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Behrooz Aliabadi
+ * Copyright (C) 2016  Behrooz Kamary Aliabadi
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
@@ -53,13 +53,13 @@ static void __attribute__ ((unused)) start_daemon()
     process_id = fork();
     if (process_id < 0)
     {
-        fprintf(stderr, "fork failed.\n");
+        fprintf(stderr, "fork() failed.\n");
         exit(EXIT_FAILURE);
     }
 
     if (process_id > 0)
     {
-        printf("daemon process id is %d. \n", process_id);
+        fprintf(stdout, "daemon process id is %d. \n", process_id);
         exit(EXIT_SUCCESS);
     }
 
@@ -67,19 +67,32 @@ static void __attribute__ ((unused)) start_daemon()
     sid = setsid();
     if(sid < 0)
     {
-        exit(1);
+        fprintf(stderr, "setsid() failed.\n");
+        exit(EXIT_FAILURE);
     }
+
     chdir("/");
 
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
 
-    // close all open file descriptors
-    for (int fid = sysconf(_SC_OPEN_MAX); fid > 0; fid--)
+    if (open("/dev/null", O_RDONLY) == -1)
     {
-        close (fid);
+        fprintf(stderr, "open(stdin)");
+        exit(EXIT_FAILURE);
     }
+    if (open("/dev/null", O_WRONLY) == -1)
+    {
+        fprintf(stderr, "open(stdout)");
+        exit(EXIT_FAILURE);
+    }
+    if (open("/dev/null", O_RDWR) == -1)
+    {
+        fprintf(stderr, "open(stderr)");
+        exit(EXIT_FAILURE);
+    }
+
 }
 
 #if DEBUG_AUDIT_ENABLE
@@ -162,6 +175,9 @@ void https_query (struct dns_query* query)
     strcat(query_str, "&type=");
     strcat(query_str, getTypeString(ntohs(query->qstn->qtype), FALSE));
 
+    if (!options.enable_edns)
+        strcat(query_str, "&edns_client_subnet=0.0.0.0/0");
+
     LOG_DEBUG("query : %s", query_str);
 
     struct curl_slist* headers = NULL;
@@ -181,7 +197,7 @@ void https_query (struct dns_query* query)
         // do not check the SSL certificate authenticity
         //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
         //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, options.server_timeout);
 
         if (options.https_proxy[0])
         {
@@ -218,16 +234,18 @@ int server()
     char*  names  = malloc(MAX_DOMAIN_LENGTH);
 
     if (buffer == NULL || json == NULL ||
-        data == NULL || names == NULL) return EXIT_FAILURE;
+      data == NULL || names == NULL) return EXIT_FAILURE;
 
     memset(buffer, 0x00, BUFFER_SIZE);
     memset(json,   0x00, BUFFER_SIZE);
     memset(data,   0x00, MAX_DOMAIN_LENGTH);
+    memset(names,  0x00, MAX_DOMAIN_LENGTH);
 
     server_add.sin_family      = AF_INET;
     server_add.sin_port        = htons(options.service_port);
     server_add.sin_addr.s_addr = htonl(INADDR_ANY);
 
+    LOG_DEBUG("local port (%d)", options.service_port);
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0)
@@ -264,9 +282,7 @@ int server()
 
         char host[NI_MAXHOST], service[NI_MAXSERV], ip[INET6_ADDRSTRLEN];
 
-        int res = getnameinfo((struct sockaddr *) &peer_add,
-                peer_add_len, host, NI_MAXHOST,
-                service, NI_MAXSERV, NI_NUMERICSERV);
+        int res = getnameinfo((struct sockaddr *) &peer_add, peer_add_len, host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV);
 
         if (peer_add.ss_family == AF_INET)
         {
@@ -287,42 +303,62 @@ int server()
         audit_pid(service);
 #endif
 
-        struct dns_header_detail *header  = (struct dns_header_detail *)buffer;
-        strncpy(names, buffer + sizeof(struct dns_header), nread - sizeof(struct dns_question) - sizeof(struct dns_header));
+        struct dns_header_detail* header  = (struct dns_header_detail*)buffer;
 
-        for (int i = 0; i < MAX_DOMAIN_LENGTH; ++i)
+        LOG_DEBUG("number of questions   (%u)", ntohs(header->q_count));
+        LOG_DEBUG("number of answers     (%u)", ntohs(header->ans_count));
+        LOG_DEBUG("number of authorities (%u)", ntohs(header->auth_count));
+        LOG_DEBUG("number of addtionals  (%u)", ntohs(header->add_count));
+
+
+        const char* dn = buffer + sizeof(struct dns_header);
+
+        size_t dnlen = 0;
+        for (;(dnlen < MAX_DOMAIN_LENGTH && *dn); dnlen++)
         {
-            if (names[i] < 0x30 && names[i] != '\0') names[i] = '.';
+            names[dnlen] = *dn++;
+            if (names[dnlen] < 0x30) names[dnlen] = '.';
         }
-
-        LOG_DEBUG("number of questions (%u)", ntohs(header->q_count));
 
         struct dns_query  query;
         query.header = header;
-        query.qstn   = (struct dns_question *)(buffer + nread - sizeof(struct dns_question));
-        query.length = nread;
-        query.names  = names + (names[0] == '.'?1:0);
+        query.qstn   = (struct dns_question *)(buffer + sizeof(struct dns_header) + dnlen + 1);
+        query.length = sizeof(struct dns_question) + sizeof(struct dns_header) + dnlen + 1;
 
+        query.names  = names;
+        LOG_DEBUG("Domain Name (%s) length (%zd)", query.names, dnlen);
+        query.names  += (names[0] == '.'?1:0);
 
         memset(json,   0x00, BUFFER_SIZE);
 
+        size_t  answer_length   = 0;
+        size_t  max_len         = 512;
+
+        if (header->add_count &&
+            *(buffer + query.length) == 0 &&
+            *(uint16_t*)(buffer + query.length + 1) == htons(41))
+        {
+            max_len = ntohs(*(uint16_t*)(buffer + query.length + 3));
+            LOG_DEBUG("client supports EDNS0 OPT packet length (%zd).", max_len);
+        }
+
         header->qr        =   1; // this is a response
         header->rcode     =   0;
-        header->ans_count =   htons(0);
+        header->ans_count =   0;
+        header->add_count =   0; // if needed we set EDNS0 OPT later
 
-        int answer_length = 0;
 
         // TODO support multiple questions; however it seems others don't.
         if (ntohs(header->q_count) == 1)
         {
             https_query(&query);
 
-            char* answer = (char *)(buffer + nread);
+            char* answer = (char *)(buffer + sizeof(struct dns_question) + sizeof(struct dns_header) + dnlen + 1);
 
-            answer_length = json_to_answer(answer, header);
+            answer_length = json_to_answer(answer, header, max_len);
         }
 
-        if (answer_length < 1)
+        if (!answer_length)
         {
             header->rcode = DNS_SERVER_FAILURE;
             answer_length = 0; // the returned value may be less than zero to indicate the error code.
@@ -330,17 +366,17 @@ int server()
         }
 
 
-        if (sendto(sock, buffer, nread + answer_length, 0, (struct sockaddr *) &peer_add, peer_add_len) != (nread + answer_length))
+        if (sendto(sock, buffer, query.length + answer_length, 0, (struct sockaddr *) &peer_add, peer_add_len) != (query.length + answer_length))
         {
             LOG_ERROR("(%x) error sending response.", header->id);
         }
         else
         {
-            LOG_DEBUG("(%x) %u bytes has been sent to %s:%s.", header->id, (unsigned int)(nread + answer_length), ip, service);
+            LOG_DEBUG("(%x) %u bytes has been sent to %s:%s.", header->id, (unsigned int)(query.length + answer_length), ip, service);
         }
 
-        memset(buffer, 0x00, BUFFER_SIZE);
-        memset(names,  0x00, MAX_DOMAIN_LENGTH);
+        memset(buffer, 0x00, nread);
+        memset(names,  0x00, dnlen);
     }
 
     free(buffer);
@@ -376,18 +412,18 @@ int main(int argc, char **argv)
     {
         switch (c)
         {
-            case 'f':
-                strncpy(options.config_file, optarg, OPT_CONIG_FILE_LEN);
-                break;
-            case 'D':
-                options.enable_debug = 0xFF;
-                break;
-            case 'h':
-                usage(argv[0]);
-                return EXIT_FAILURE;
-            default:
-                usage(argv[0]);
-                return EXIT_FAILURE;
+        case 'f':
+            strncpy(options.config_file, optarg, OPT_CONIG_FILE_LEN);
+            break;
+        case 'D':
+            options.enable_debug = 0xFF;
+            break;
+        case 'h':
+            usage(argv[0]);
+            return EXIT_FAILURE;
+        default:
+            usage(argv[0]);
+            return EXIT_FAILURE;
         }
     }
 
@@ -397,6 +433,7 @@ int main(int argc, char **argv)
     }
 
     if (options.service_port == 0) options.service_port = DNS_SERVER_PORT;
+    if (options.server_timeout == 0) options.server_timeout = DNS_SERVER_TIMEOUT;
 
     peer_add_len  = sizeof(struct sockaddr_storage);
     running       = 1;
@@ -422,10 +459,11 @@ int main(int argc, char **argv)
     sigaction(SIGTERM,  &sa, NULL);
     signal(SIGPIPE, SIG_IGN);
 
-#if !DEBUG_ENABLE
-    start_daemon();
-    if (create_pidfile() == EXIT_FAILURE) return EXIT_FAILURE;
-#endif
+    if (options.enable_debug != 0xFF)
+    {
+        start_daemon();
+        if (create_pidfile() == EXIT_FAILURE) return EXIT_FAILURE;
+    }
 
     if (server() == EXIT_FAILURE)
         LOG_ERROR ("udp server failed to start.");
@@ -436,9 +474,10 @@ int main(int argc, char **argv)
 }
 
 
-int json_to_answer(char* answer, struct dns_header_detail* header)
+size_t json_to_answer(char* answer, struct dns_header_detail* header, size_t max_len)
 {
-    char*    orig   = answer;
+    size_t      padd    = 0;
+    char*       orig    = answer;
     memset(data,   0x00, MAX_DOMAIN_LENGTH);
 
     char* rdata;
@@ -455,7 +494,8 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
 
     if (token == NULL) return JSON_NO_ANSWER;
 
-    uint16_t num_answers = 0;
+    uint16_t num_answers        = 0;
+    uint16_t num_additionals    = 0;
 
     while ((token = strstr(token, "name")))
     {
@@ -469,10 +509,10 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         type         = atoi(ctype);
 
         if  (type != DNS_A_RECORD &&
-                type != DNS_AAA_RECORD &&
-                type != DNS_CNAME_RECORD &&
-                type != DNS_NS_RECORD &&
-                type != DNS_MX_RECORD)
+             type != DNS_AAA_RECORD &&
+             type != DNS_CNAME_RECORD &&
+             type != DNS_NS_RECORD &&
+             type != DNS_MX_RECORD)
         {   // other types are not supported
             continue;
         }
@@ -511,32 +551,32 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
         ans->atype       =  htons(type);
         ans->aclass      =  htons(0x0001);
         ans->ttl         =  htonl(ttl);
-        ans->r_data_len  =  0;
+        ans->rdlen  =  0;
 
         if (type == DNS_A_RECORD)
         {
-            ans->r_data_len  =  htons(4);
+            ans->rdlen  =  htons(4);
             rdata            =  (char *)(answer + DNS_ANSWER_LEN);
             inet_pton(AF_INET, data + offset, rdata);
 
             // 4 x 3 + 3 = 15 bytes to be erased
             memset(data,   0x00, INET_ADDRSTRLEN);
 
-            answer += 4 + DNS_ANSWER_LEN;
+            padd = 4 + DNS_ANSWER_LEN;
         }
         else if (type == DNS_AAA_RECORD)
         {
-            ans->r_data_len  =  htons(INET_ADDRSTRLEN);
+            ans->rdlen  =  htons(INET_ADDRSTRLEN);
             rdata       =  (char *)(answer + DNS_ANSWER_LEN);
             inet_pton(AF_INET6, data + offset, rdata);
 
             // maximum string size of an IPv6 address is 45 bytes
             memset(data,   0x00, INET6_ADDRSTRLEN);
 
-            answer += INET_ADDRSTRLEN + DNS_ANSWER_LEN;
+            padd = INET_ADDRSTRLEN + DNS_ANSWER_LEN;
         }
         else if (type == DNS_CNAME_RECORD ||
-                type == DNS_NS_RECORD)
+                 type == DNS_NS_RECORD)
         {
             uint8_t     lent  = 0;
             size_t      dot   = 0;
@@ -554,13 +594,13 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
 
 
             data[len] = 0x00;
-            ans->r_data_len  =  htons(len + offset);
+            ans->rdlen  =  htons(len + offset);
             rdata            =  (char *)(answer + DNS_ANSWER_LEN);
 
             memcpy(rdata, data, len + offset);
 
             memset(data,   0x00, len + offset);
-            answer += len + offset + DNS_ANSWER_LEN;
+            padd = len + offset + DNS_ANSWER_LEN;
 
         }
         else if (type == DNS_MX_RECORD)
@@ -576,7 +616,7 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
             LOG_DEBUG("(%x) MX Preference : %d", header->id, pref);
             LOG_DEBUG("(%x) len [%zu] data [%s]", header->id, len, &data[pref_len + 1]);
 
-            ans->r_data_len  =  htons(len - pref_len + sizeof(pref));
+            ans->rdlen  =  htons(len - pref_len + sizeof(pref));
 
             pref = htons(pref);
             memcpy(rdata, (void *)(&pref), sizeof(pref));
@@ -586,22 +626,30 @@ int json_to_answer(char* answer, struct dns_header_detail* header)
             copy(rdata + sizeof(pref), data + pref_len, len + pref_len);
 
             memset(data,   0x00, MAX_DOMAIN_LENGTH);
-            answer += len + DNS_ANSWER_LEN - pref_len + sizeof(pref);
+            padd = len + DNS_ANSWER_LEN - pref_len + sizeof(pref);
         }
         else
         {
-            ans->r_data_len  =  htons(len + offset);
-            rdata            =  (char *)(answer + DNS_ANSWER_LEN);
+            ans->rdlen  =  htons(len + offset);
+            rdata       =  (char *)(answer + DNS_ANSWER_LEN);
             strncpy(rdata, data + offset, len + offset);
             memset(data,   0x00, len + offset);
-            answer          += len + DNS_ANSWER_LEN + offset;
+            padd = len + DNS_ANSWER_LEN + offset;
         }
 
-        num_answers++;
+        if ((answer - orig + padd) > max_len) break;
+
+        answer += padd;
+
+        if ((answer - orig) < DNS_MAX_SIZE)
+            num_answers++;
+        else
+            num_additionals++;
     }
 
     header->qr        = 1;
     header->ans_count = htons(num_answers);
+    header->add_count = htons(num_additionals);
 
     return (answer - orig);
 }
@@ -611,27 +659,33 @@ char* getTypeString(uint16_t type, int unknown)
 {
     switch(type)
     {
-        case DNS_AAA_RECORD:
-            return "AAAA";
-            break;
-        case DNS_A_RECORD:
-            return "A";
-            break;
-        case DNS_CNAME_RECORD:
-            return "CNAME";
-            break;
-        case DNS_NS_RECORD:
-            return "NS";
-            break;
-        case DNS_MX_RECORD:
-            return "MX";
-            break;
-        case 0xFF:
-            return "ANY";
-            break;
-        default:
-            return unknown?"UNKNOWN":"ANY";
-            break;
+    case DNS_AAA_RECORD:
+        return "AAAA";
+        break;
+    case DNS_A_RECORD:
+        return "A";
+        break;
+    case DNS_CNAME_RECORD:
+        return "CNAME";
+        break;
+    case DNS_SOA_RECORD:
+        return "SOA";
+        break;
+    case DNS_NS_RECORD:
+        return "NS";
+        break;
+    case DNS_MX_RECORD:
+        return "MX";
+        break;
+    case DNS_OPT_RECORD:
+        return "OPT";
+        break;
+    case 0xFF:
+        return "ANY";
+        break;
+    default:
+        return unknown?"UNKNOWN":"ANY";
+        break;
     }
 
     return unknown?"UNKNOWN":"ANY";
@@ -724,14 +778,14 @@ void handle_signal(int signal)
 {
     switch (signal)
     {
-        case SIGHUP:
-        case SIGTERM:
-        case SIGUSR1:
-        case SIGINT:
-            close(pidfp);
-            running = 0;
-        default:
-            return;
+    case SIGHUP:
+    case SIGTERM:
+    case SIGUSR1:
+    case SIGINT:
+        close(pidfp);
+        running = 0;
+    default:
+        return;
     }
 }
 
@@ -781,7 +835,11 @@ int parse_options()
         }
         else if (strstr(line, OPT_SERVICE_PORT) != NULL)
         {
-          options.service_port = atoi(line + sizeof(OPT_SERVICE_PORT));
+            options.service_port = atoi(line + sizeof(OPT_SERVICE_PORT));
+        }
+        else if (strstr(line, OPT_ENABLE_EDNS) != NULL)
+        {
+            if (strcasestr(line, OPT_ENABLE_TRUE) != NULL) options.enable_edns = 1;
         }
     }
 
@@ -818,9 +876,9 @@ int remove_spaces(char* str)
 
     do
     {
-      *stra = *strb;
-      if(*stra != ' ') stra++;
-      else shift++;
+        *stra = *strb;
+        if(*stra != ' ') stra++;
+        else shift++;
     } while(*strb++ != 0);
 
     return shift;
