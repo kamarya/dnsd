@@ -36,7 +36,7 @@ For *systemd* you may need to run ```systemctl daemon-reload``` before starting 
 For macOS systems install and launch the service as follows.
 ```
 make macos-service
-launchctl load /Library/LaunchDaemons/service.dnsd.plist
+launchctl load -w /Library/LaunchDaemons/service.dnsd.plist
 ```
 ### Verification
 You can verify wether the service is accessible through ```host -va github.com localhost```.
