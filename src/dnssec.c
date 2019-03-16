@@ -31,8 +31,8 @@
 #include <unistd.h>
 #include <poll.h>
 #include <sys/stat.h>   // umask()
-#include "dnssec.h"
-#include "log.h"
+#include <dnssec.h>
+#include <log.h>
 
 
 sig_atomic_t                        running = 0;
