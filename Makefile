@@ -1,5 +1,5 @@
 all:
-	gcc src/dnssec.c -Iinc -g -Wall -lcurl -std=gnu99 -o dnsd
+	$(CC) src/dnssec.c -Iinc -g -Wall -lcurl -std=gnu99 -o dnsd
 install:
 	cp dnsd.conf /etc/dnsd.conf
 	cp dnsd /usr/local/bin/
