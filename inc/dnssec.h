@@ -20,7 +20,7 @@
 
 #define PIDFILE             "/var/run/dnsd.pid"
 
-#define LICENSE             "DNSd  Copyright (C) 2016  Behrooz Kamary Aliabadi.\n"\
+#define LICENSE             "DNSd  Copyright (C) 2016  Behrooz Kamary.\n"\
                             "This program comes with ABSOLUTELY NO WARRANTY. \n"\
                             "You should have received a copy of the GNU General Public License\n"\
                             "along with this program. If not, see <http://www.gnu.org/licenses/>."

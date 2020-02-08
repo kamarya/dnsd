@@ -153,7 +153,7 @@ size_t body_callback (void* contents, size_t size, size_t nmemb, void* userp)
     return chunk;
 }
 
-void https_query (struct dns_query* query)
+int https_query (struct dns_query* query)
 {
 
     CURL*     curl;
@@ -197,6 +197,10 @@ void https_query (struct dns_query* query)
         // do not check the SSL certificate authenticity
         //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
         //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+
+        // failed to work with libcurl/7.65.3 and HTTP/2.0
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, options.server_timeout);
 
         if (options.https_proxy[0])
@@ -211,17 +215,21 @@ void https_query (struct dns_query* query)
 
         res = curl_easy_perform(curl);
 
-        if (res != CURLE_OK)
-        {
-            LOG_ERROR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
-        }
-
         curl_easy_cleanup(curl);
         curl_slist_free_all(headers);
         LOG_DEBUG("curl_easy_perform() has returned.");
+
+        if (res != CURLE_OK)
+        {
+            LOG_ERROR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+            return EXIT_FAILURE;
+        }
+        return EXIT_SUCCESS;
     }
 
     curl_global_cleanup();
+
+    return EXIT_FAILURE;
 }
 
 int server()
@@ -351,11 +359,11 @@ int server()
         // TODO support multiple questions; however it seems others don't.
         if (ntohs(header->q_count) == 1)
         {
-            https_query(&query);
-
-            char* answer = (char *)(buffer + sizeof(struct dns_question) + sizeof(struct dns_header) + dnlen + 1);
-
-            answer_length = json_to_answer(answer, header, max_len);
+            if (https_query(&query) == EXIT_SUCCESS)
+            {
+                char* answer = (char *)(buffer + sizeof(struct dns_question) + sizeof(struct dns_header) + dnlen + 1);
+                answer_length = json_to_answer(answer, header, max_len);
+            }
         }
 
         if (!answer_length)
