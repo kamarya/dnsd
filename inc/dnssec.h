@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Behrooz Kamary Aliabadi
+ * Copyright (C) 2016  Behrooz Kamary
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -68,6 +68,8 @@
 #define OPT_ENABLE_EDNS         "enable_edns_ecs"
 #define OPT_DEFAULT_URL         "https://dns.google.com"
 #define OPT_SERVICE_PORT        "service_port"
+#define OPT_SERVICE_IP          "service_ip"
+#define OPT_SERVICE_IP_LEN      INET6_ADDRSTRLEN
 #define OPT_ENABLE_TRUE         "true"
 #define OPT_ENABLE_FALSE        "false"
 
@@ -91,6 +93,7 @@ struct func_options
     char      https_proxy[OPT_HTTPS_PROXY_LEN];
     char      server_url[OPT_SERVER_URL_LEN];
     char      server_ip_list[OPT_SERVER_IP_LEN];
+    char      service_ip[OPT_SERVICE_IP_LEN];
     uint16_t  server_timeout;
     uint16_t  service_port;
     uint8_t   enable_debug;

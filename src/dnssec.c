@@ -253,7 +253,19 @@ int server()
     server_add.sin_port        = htons(options.service_port);
     server_add.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    LOG_DEBUG("local port (%d)", options.service_port);
+    if (options.service_ip[0] != '\0')
+    {
+        if (inet_pton(AF_INET, options.service_ip, &(server_add.sin_addr)) == 1)
+        {
+            LOG_INFO("service ip (%s)", options.service_ip);
+        }
+        else
+        {
+            LOG_ERROR("invalid service ip (%s)", options.service_ip);
+        }
+    }
+
+    LOG_DEBUG("service port (%d)", options.service_port);
 
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0)
@@ -811,6 +823,11 @@ int parse_options()
     size_t  len     = 0;
     ssize_t read    = 0;
 
+    options.https_proxy[0]      = 0;
+    options.server_url[0]       = 0;
+    options.server_ip_list[0]   = 0;
+    options.service_ip[0]       = 0;
+
     fp = fopen(options.config_file, "r");
     if (fp == NULL) return EXIT_FAILURE;
 
@@ -844,6 +861,10 @@ int parse_options()
         else if (strstr(line, OPT_SERVICE_PORT) != NULL)
         {
             options.service_port = atoi(line + sizeof(OPT_SERVICE_PORT));
+        }
+        else if (strstr(line, OPT_SERVICE_IP) != NULL)
+        {
+            strncpy(options.service_ip, line + sizeof(OPT_SERVICE_IP), OPT_SERVICE_IP_LEN);
         }
         else if (strstr(line, OPT_ENABLE_EDNS) != NULL)
         {
