@@ -47,7 +47,7 @@
 #define DNS_SOA_RECORD      0x0006
 #define DNS_MX_RECORD       0x000F
 #define DNS_OPT_RECORD      0x0029
-#define DNS_AAA_RECORD      0x001C
+#define DNS_AAAA_RECORD     0x001C
 
 #define MAX_DOMAIN_LENGTH       255
 #define MAX_SUBDOMAIN_LENGTH    63

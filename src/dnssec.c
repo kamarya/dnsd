@@ -200,7 +200,7 @@ int https_query (struct dns_query* query)
 
         // failed to work with libcurl/7.65.3 and HTTP/2.0
         curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, options.server_timeout);
 
         if (options.https_proxy[0])
@@ -378,7 +378,7 @@ int server()
             }
         }
 
-        if (!answer_length)
+        if (!answer_length || answer_length == JSON_NO_ANSWER)
         {
             header->rcode = DNS_SERVER_FAILURE;
             answer_length = 0; // the returned value may be less than zero to indicate the error code.
@@ -512,7 +512,11 @@ size_t json_to_answer(char* answer, struct dns_header_detail* header, size_t max
 
     char* token = strstr(json, "Answer");
 
-    if (token == NULL) return JSON_NO_ANSWER;
+    if (token == NULL)
+    {
+        LOG_DEBUG("no 'Answer' was found");
+        return JSON_NO_ANSWER;
+    }
 
     uint16_t num_answers        = 0;
     uint16_t num_additionals    = 0;
@@ -529,7 +533,7 @@ size_t json_to_answer(char* answer, struct dns_header_detail* header, size_t max
         type         = atoi(ctype);
 
         if  (type != DNS_A_RECORD &&
-             type != DNS_AAA_RECORD &&
+             type != DNS_AAAA_RECORD &&
              type != DNS_CNAME_RECORD &&
              type != DNS_NS_RECORD &&
              type != DNS_MX_RECORD)
@@ -584,7 +588,7 @@ size_t json_to_answer(char* answer, struct dns_header_detail* header, size_t max
 
             padd = 4 + DNS_ANSWER_LEN;
         }
-        else if (type == DNS_AAA_RECORD)
+        else if (type == DNS_AAAA_RECORD)
         {
             ans->rdlen  =  htons(INET_ADDRSTRLEN);
             rdata       =  (char *)(answer + DNS_ANSWER_LEN);
@@ -679,7 +683,7 @@ char* getTypeString(uint16_t type, int unknown)
 {
     switch(type)
     {
-    case DNS_AAA_RECORD:
+    case DNS_AAAA_RECORD:
         return "AAAA";
         break;
     case DNS_A_RECORD:
