@@ -92,7 +92,6 @@ static void __attribute__ ((unused)) start_daemon()
         fprintf(stderr, "open(stderr)");
         exit(EXIT_FAILURE);
     }
-
 }
 
 #if DEBUG_AUDIT_ENABLE
@@ -182,11 +181,6 @@ int https_query (struct dns_query* query)
 
     struct curl_slist* headers = NULL;
 
-    headers = curl_slist_append(headers, "Accept-Encoding : deflate, sdch, br");
-    headers = curl_slist_append(headers, "Accept : txt/html, application/xml;q=0.8");
-    headers = curl_slist_append(headers, "Accept-Language : en-US,en;q=0.8");
-    headers = curl_slist_append(headers, "Cache-Control : max-age=0");
-
     curl = curl_easy_init();
     if(curl && strlen(getTypeString(ntohs(query->qstn->qtype), FALSE)))
     {
@@ -197,6 +191,7 @@ int https_query (struct dns_query* query)
         // do not check the SSL certificate authenticity
         //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
         //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
         // failed to work with libcurl/7.65.3 and HTTP/2.0
         curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
@@ -206,6 +201,15 @@ int https_query (struct dns_query* query)
         if (options.https_proxy[0])
         {
             curl_easy_setopt(curl, CURLOPT_PROXY, options.https_proxy);
+        }
+
+        if (options.service_pub_key[0])
+        {
+            if (curl_easy_setopt(curl, CURLOPT_PINNEDPUBLICKEY, options.service_pub_key) != CURLE_OK)
+            {
+                LOG_ERROR("failed to load the pinned public key");
+                return EXIT_FAILURE;
+            }
         }
 
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_callback);
@@ -376,6 +380,7 @@ int server()
                 char* answer = (char *)(buffer + sizeof(struct dns_question) + sizeof(struct dns_header) + dnlen + 1);
                 answer_length = json_to_answer(answer, header, max_len);
             }
+            else LOG_ERROR("https_query() failed.");
         }
 
         if (!answer_length || answer_length == JSON_NO_ANSWER)
@@ -525,7 +530,7 @@ size_t json_to_answer(char* answer, struct dns_header_detail* header, size_t max
     {
 
         token        = strstr(token, "type");
-        char*   beg  = strchr(token,   ':') + 2;
+        char*   beg  = strchr(token,   ':') + 1;
         size_t  len  = strchr(beg,   ',') - beg;
 
         memset(ctype, 0x00, 10);
@@ -742,36 +747,31 @@ void hexdump (char *desc, void *addr, int len)
     unsigned char buff[17];
     unsigned char *pc = (unsigned char*)addr;
 
-    // Output description if given.
     if (desc != NULL)
         printf ("%s:\n", desc);
 
-    if (len == 0) {
+    if (len == 0)
+    {
         printf("  ZERO LENGTH\n");
         return;
     }
-    if (len < 0) {
+    if (len < 0)
+    {
         printf("  NEGATIVE LENGTH: %i\n",len);
         return;
     }
 
     // Process every byte in the data.
-    for (i = 0; i < len; i++) {
-        // Multiple of 16 means new line (with line offset).
-
-        if ((i % 16) == 0) {
-            // Just don't print ASCII for the zeroth line.
+    for (i = 0; i < len; i++)
+    {
+        if ((i % 16) == 0)
+        {
             if (i != 0)
                 printf ("  %s\n", buff);
 
-            // Output the offset.
             printf ("  %04x ", i);
         }
-
-        // Now the hex code for the specific character.
         printf (" %02x", pc[i]);
-
-        // And store a printable ASCII character for later.
         if ((pc[i] < 0x20) || (pc[i] > 0x7e))
             buff[i % 16] = '.';
         else
@@ -779,13 +779,12 @@ void hexdump (char *desc, void *addr, int len)
         buff[(i % 16) + 1] = '\0';
     }
 
-    // Pad out last line if not exactly 16 characters.
-    while ((i % 16) != 0) {
+    while ((i % 16) != 0)
+    {
         printf ("   ");
         i++;
     }
 
-    // And print the final ASCII bit.
     printf ("  %s\n", buff);
 }
 
@@ -869,6 +868,10 @@ int parse_options()
         else if (strstr(line, OPT_SERVICE_IP) != NULL)
         {
             strncpy(options.service_ip, line + sizeof(OPT_SERVICE_IP), OPT_SERVICE_IP_LEN);
+        }
+        else if (strstr(line, OPT_SERVICE_PUB_KEY) != NULL)
+        {
+            strncpy(options.service_pub_key, line + sizeof(OPT_SERVICE_PUB_KEY), OPT_CONIG_FILE_LEN);
         }
         else if (strstr(line, OPT_ENABLE_EDNS) != NULL)
         {

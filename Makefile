@@ -1,7 +1,9 @@
 all:
-	$(CC) src/dnssec.c -Iinc -g -Wall -lcurl -std=gnu99 -o dnsd
+	$(CC) src/dnssec.c -Iinc -Wall -lcurl -std=gnu11 -o dnsd
 install:
-	cp dnsd.conf /etc/dnsd.conf
+	mkdir -p /etc/dnsd
+	cp dnsd.conf /etc/dnsd/dnsd.conf
+	cp google.der /etc/dnsd/google.der
 	cp dnsd /usr/local/bin/
 linux-service:
 	cp service/dnsd.service /lib/systemd/system/
