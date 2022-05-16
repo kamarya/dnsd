@@ -10,7 +10,7 @@
     <array>
         <string>/usr/local/bin/dnsd</string>
         <string>-f</string>
-        <string>/etc/dnsd.conf</string>
+        <string>/etc/dnsd/dnsd.conf</string>
     </array>
     <key>RunAtLoad</key>
     <true/>

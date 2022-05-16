@@ -69,6 +69,7 @@
 #define OPT_DEFAULT_URL         "https://dns.google.com"
 #define OPT_SERVICE_PORT        "service_port"
 #define OPT_SERVICE_IP          "service_ip"
+#define OPT_SERVICE_PUB_KEY     "service_pub_key"
 #define OPT_SERVICE_IP_LEN      INET6_ADDRSTRLEN
 #define OPT_ENABLE_TRUE         "true"
 #define OPT_ENABLE_FALSE        "false"
@@ -94,6 +95,7 @@ struct func_options
     char      server_url[OPT_SERVER_URL_LEN];
     char      server_ip_list[OPT_SERVER_IP_LEN];
     char      service_ip[OPT_SERVICE_IP_LEN];
+    char      service_pub_key[OPT_CONIG_FILE_LEN];
     uint16_t  server_timeout;
     uint16_t  service_port;
     uint8_t   enable_debug;

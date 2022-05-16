@@ -12,6 +12,7 @@ DNSd is a daemon a.k.a. service for Unix-like systems. It provides a local DNS b
  - Highly configurable through a simple config. file.
  - A Self contained package that depends only on [libcurl](https://curl.haxx.se/libcurl/).
  - Supported records are **A**,**AAAA**,**CNAME**,**NS** and **MX**.
+ - Public key pinning
 
 # Build and Install
 Build the software by running the following commands in the terminal.
@@ -38,8 +39,13 @@ For macOS systems install and launch the service as follows.
 make macos-service
 launchctl load -w /Library/LaunchDaemons/service.dnsd.plist
 ```
+### Obtain Public Key
+`openssl s_client -connect google.com:443 | openssl x509 -pubkey -noout`
+
 ### Verification
-You can verify wether the service is accessible through ```host -va github.com localhost```.
+You can verify wether the service is accessible through
+ - `host -va github.com localhost`
+ - `nslookup -port=5454 -query=mx github.com 127.0.0.1`
 ```
 Trying "github.com"
 Using domain server:
