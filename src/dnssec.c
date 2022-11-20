@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <sys/stat.h>   // umask()
+#include <errno.h>
 #include <dnssec.h>
 #include <log.h>
 
@@ -181,59 +182,59 @@ int https_query (struct dns_query* query)
 
     struct curl_slist* headers = NULL;
 
+    curl_global_cleanup();
     curl = curl_easy_init();
-    if(curl && strlen(getTypeString(ntohs(query->qstn->qtype), FALSE)))
+    if (!curl)
     {
-
-        curl_easy_setopt(curl, CURLOPT_URL, query_str);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-        // do not check the SSL certificate authenticity
-        //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-        //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-
-        // failed to work with libcurl/7.65.3 and HTTP/2.0
-        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, options.server_timeout);
-
-        if (options.https_proxy[0])
-        {
-            curl_easy_setopt(curl, CURLOPT_PROXY, options.https_proxy);
-        }
-
-        if (options.service_pub_key[0])
-        {
-            if (curl_easy_setopt(curl, CURLOPT_PINNEDPUBLICKEY, options.service_pub_key) != CURLE_OK)
-            {
-                LOG_ERROR("failed to load the pinned public key");
-                return EXIT_FAILURE;
-            }
-        }
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)query);
-
-        total_read = 0;
-
-        res = curl_easy_perform(curl);
-
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-        LOG_DEBUG("curl_easy_perform() has returned.");
-
-        if (res != CURLE_OK)
-        {
-            LOG_ERROR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
-            return EXIT_FAILURE;
-        }
-        return EXIT_SUCCESS;
+        LOG_ERROR("curl_easy_init() failed.");
+        return EXIT_FAILURE;
     }
 
-    curl_global_cleanup();
+    curl_easy_setopt(curl, CURLOPT_URL, query_str);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    return EXIT_FAILURE;
+    // do not check the SSL certificate authenticity
+    //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+    //curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+    //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, options.server_timeout);
+
+    if (options.https_proxy[0])
+    {
+        curl_easy_setopt(curl, CURLOPT_PROXY, options.https_proxy);
+    }
+
+    if (options.service_pub_key[0])
+    {
+        if (curl_easy_setopt(curl, CURLOPT_PINNEDPUBLICKEY, options.service_pub_key) != CURLE_OK)
+        {
+            LOG_ERROR("failed to load the pinned public key");
+            return EXIT_FAILURE;
+        }
+    }
+
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)query);
+
+    total_read = 0;
+
+    res = curl_easy_perform(curl);
+
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+    LOG_DEBUG("curl_easy_perform() has returned.");
+
+    if (res != CURLE_OK)
+    {
+        LOG_ERROR("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        return EXIT_FAILURE;
+    }
+
+
+    return EXIT_SUCCESS;
 }
 
 int server()
@@ -274,13 +275,21 @@ int server()
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sock < 0)
     {
+
+#if LOG_LEVEL == LEV_NO_DEV_LOG
         perror("socket()");
+#endif
+        LOG_ERROR("socket() %s", strerror(errno));
         return EXIT_FAILURE;
     }
 
     if (bind(sock, (struct sockaddr*) &server_add, sizeof(server_add)))
     {
+
+#if LOG_LEVEL == LEV_NO_DEV_LOG
         perror("bind()");
+#endif
+        LOG_ERROR("bind() %s", strerror(errno));
         return EXIT_FAILURE;
     }
 
