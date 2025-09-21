@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Behrooz Kamary Aliabadi
+ * Copyright (C) 2016  Kamary
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

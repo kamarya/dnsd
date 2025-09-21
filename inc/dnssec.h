@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016  Behrooz Kamary
+ * Copyright (C) 2016  Kamary
 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 
 #define PIDFILE             "/var/run/dnsd.pid"
 
-#define LICENSE             "DNSd  Copyright (C) 2016  Behrooz Kamary.\n"\
+#define LICENSE             "DNSd  Copyright (C) 2016  Kamary (https://github.com/kamarya).\n"\
                             "This program comes with ABSOLUTELY NO WARRANTY. \n"\
                             "You should have received a copy of the GNU General Public License\n"\
                             "along with this program. If not, see <http://www.gnu.org/licenses/>."
