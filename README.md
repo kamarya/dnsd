@@ -14,7 +14,7 @@ DNSd is a daemon a.k.a. service for Unix-like systems. It provides a local DNS b
  - Supported records are **A**,**AAAA**,**CNAME**,**NS** and **MX**.
  - Public key pinning
 
-# Build and Install
+## Build and Install
 Build the software by running the following commands in the terminal.
 ```
 make
@@ -39,10 +39,12 @@ For macOS systems install and launch the service as follows.
 make macos-service
 launchctl load -w /Library/LaunchDaemons/service.dnsd.plist
 ```
-### Obtain Public Key
-`openssl s_client -connect google.com:443 | openssl x509 -pubkey -noout`
+## Obtain Public Key
+You may require certificate or public key pinning in certain situations. For that you need to obtain the public key of the server.
 
-### Verification
+Run `openssl s_client -connect google.com:443 -servername dns.google.com | openssl x509 -pubkey -noout > google.pem` then press `Ctrl-D`. Then run `openssl pkey -in google.pem -pubin -outform DER -out google.der`
+
+## Verification
 You can verify wether the service is accessible through
  - `host -va github.com localhost`
  - `nslookup -port=5454 -query=mx github.com 127.0.0.1`
@@ -74,7 +76,7 @@ github.com.		3599	IN	MX	5 alt2.aspmx.l.google.com.
 
 Received 390 bytes from 127.0.0.1#53 in 178 ms
 ```
-# License
+## License
 
 This software is licensed under the GNU GPLv3 license.
 
